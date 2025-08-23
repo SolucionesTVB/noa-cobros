@@ -4,12 +4,10 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Ruta de prueba para saber si el servidor está vivo
 @app.get("/")
 def health():
     return "Servidor vivo ✅"
 
-# Ruta principal de IA
 @app.post("/ia/resumen-cobro")
 def resumen_cobro():
     data = request.get_json() or {}
@@ -21,4 +19,3 @@ def resumen_cobro():
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5055, debug=True)
-
