@@ -112,3 +112,30 @@ for r in app.url_map.iter_rules():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5056)
+
+# --- Actualizar factura (p. ej. marcar pagada)
+@app.route("/facturas/<int:fid>", methods=["PUT", "OPTIONS"])
+def actualizar_factura(fid):
+    if request.method == "OPTIONS":
+        return ("", 204)
+    data = request.get_json(silent=True) or {}
+    fields, values = [], []
+    for k in ("cliente", "monto", "vence", "estado"):
+        if k in data and data[k] is not None:
+            v = data[k]
+            if k == "monto":
+                try: v = float(v)
+                except: v = 0.0
+            if k == "vence":
+                v = parse_iso(v)
+            fields.append(f"{k}=?"); values.append(v)
+    if not fields:
+        return {"error": "Nada que actualizar"}, 400
+    values.append(fid)
+    with get_conn() as conn:
+        conn.execute(f"UPDATE facturas SET {', '.join(fields)} WHERE id=?", values)
+        conn.commit()
+        row = conn.execute("SELECT * FROM facturas WHERE id=?", (fid,)).fetchone()
+        if not row:
+            return {"error": "No existe"}, 404
+        return dict(row), 200
