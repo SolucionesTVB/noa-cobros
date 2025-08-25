@@ -27,10 +27,21 @@ def init_schema():
         conn.commit()
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS: habilitado para cualquier origen (Netlify) y métodos comunes
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Refuerzo CORS (headers después de cada respuesta, incluido OPTIONS)
+@app.after_request
+def add_cors_headers(resp):
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return resp
+
 init_schema()
 
-# --- Rutas de salud
+# --- Salud
 @app.get("/")
 def raiz():
     return {"ok": True, "service": "Noa Cobros API"}
@@ -49,7 +60,7 @@ def parse_iso(d):
     except Exception:
         raise ValueError("Fecha inválida. Use aaaa-mm-dd o dd/mm/aaaa.")
 
-# --- CRUD
+# --- CRUD demo mínimo
 @app.get("/facturas")
 def listar_facturas():
     with get_conn() as conn:
@@ -77,7 +88,25 @@ def crear_factura():
         row = conn.execute("SELECT * FROM facturas WHERE id=?", (fid,)).fetchone()
         return dict(row), 201
 
-# --- Log de rutas (se verá en Render Logs)
+# --- IA: endpoint con soporte de OPTIONS para preflight
+@app.route("/ia/resumen-cobro", methods=["POST", "OPTIONS"])
+def ia_resumen_cobro():
+    if request.method == "OPTIONS":
+        # Respuesta al preflight
+        return ("", 204)
+    data = request.get_json(silent=True) or {}
+    cliente = data.get("cliente", "N/D")
+    try:
+        monto = float(data.get("monto", 0) or 0)
+    except:
+        monto = 0.0
+    return {
+        "ok": True,
+        "resumen": f"Preparar cobro a {cliente} por {monto:,.2f} CRC.",
+        "sugerencias": ["Enviar WhatsApp", "Programar recordatorio", "Marcar seguimiento"]
+    }
+
+# Log de rutas (útil en Render Logs)
 for r in app.url_map.iter_rules():
     print(f"[ROUTE] {r.rule} -> {sorted(r.methods)}")
 
