@@ -4,17 +4,35 @@
   <meta charset="utf-8" />
   <title>Noa Cobros</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <h1>Noa Cobros</h1>
 
-  <!-- 👇 EL BOTÓN -->
-  <button id="btnCobrar">Cobrar</button>
+  <label>Texto del cobro</label>
+  <textarea id="inputTexto" placeholder="Ej: Cliente A, factura 123, vence 30/08"></textarea>
 
-  <!-- 👇 Aquí se verá la respuesta -->
-  <p id="salida"></p>
+  <div class="acciones">
+    <button id="btnCobrar">Cobrar</button>
+    <button id="btnReporte">Generar reporte mensual</button>
+  </div>
 
-  <!-- 👇 MUY IMPORTANTE: primero config.js y luego app.js -->
+  <hr>
+
+  <h3>Enviar WhatsApp (simulado)</h3>
+  <input id="tel" placeholder="+50670000000" />
+  <input id="msg" placeholder="Mensaje de cobro" />
+  <button id="btnWhatsapp">Enviar WhatsApp</button>
+
+  <hr>
+
+  <h3>Cargar CSV</h3>
+  <input id="csv" type="file" accept=".csv" />
+  <button id="btnSubirCsv">Subir CSV</button>
+  <small>Columnas: cliente, monto, vence (dd/mm o dd/mm/aaaa)</small>
+
+  <pre id="salida"></pre>
+
   <script src="./config.js"></script>
   <script src="./app.js" defer></script>
 </body>

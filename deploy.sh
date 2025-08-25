@@ -21,15 +21,19 @@ fi
 
 # 2. Agrega y commitea
 git add .
-git commit -m "Deploy automático Noa Cobros" || echo "ℹ️ Nada nuevo para commitear"
+git commit -m "Deploy automático Noa Cobros" || echo "ℹ️ Nada 
+nuevo para commitear"
 
-# 3. Remote origin: usa GitHub CLI si está disponible; si no, pide URL
+# 3. Remote origin: usa GitHub CLI si está disponible; si no, 
+pide URL
 if ! git remote | grep -q origin; then
   if command -v gh >/dev/null 2>&1; then
-    gh repo create noa-cobros --public --source . --remote origin --push
+    gh repo create noa-cobros --public --source . --remote origin 
+--push
     echo "✔ Repo creado y subido con gh"
   else
-    echo "👉 Pegá la URL de tu repo en GitHub (ej: https://github.com/TuUsuario/noa-cobros.git):"
+    echo "👉 Pegá la URL de tu repo en GitHub (ej: 
+https://github.com/TuUsuario/noa-cobros.git):"
     read REPO
     git remote add origin "$REPO"
     git branch -M main
@@ -46,12 +50,18 @@ echo "✅ Código en GitHub."
 echo
 echo "👉 Render:"
 echo "   - Entra a https://render.com > New > Blueprint"
-echo "   - Seleccioná este repo. Usará render.yaml y levantará el backend con gunicorn."
+echo "   - Seleccioná este repo. Usará render.yaml y levantará el 
+backend con gunicorn."
 echo
 echo "👉 Netlify:"
-echo "   - Entra a https://app.netlify.com > Add new site > Deploy manually"
-echo "   - Arrastrá la carpeta /frontend. Te dará un link público (guárdalo en favoritos)."
+echo "   - Entra a https://app.netlify.com > Add new site > 
+Deploy manually"
+echo "   - Arrastrá la carpeta /frontend. Te dará un link público 
+(guárdalo en favoritos)."
 echo
-echo "📌 Si el frontend necesita apuntar a otra URL de backend en Render:"
+echo "📌 Si el frontend necesita apuntar a otra URL de backend en 
+Render:"
 echo "    En el navegador, ejecutá una vez en consola:"
-echo "    localStorage.setItem('API_BASE','https://TU-BACKEND.onrender.com')"
+echo "    
+localStorage.setItem('API_BASE','https://TU-BACKEND.onrender.com')"
+

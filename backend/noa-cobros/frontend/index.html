@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Noa Cobros</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:24px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0 20px}
+    .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#f9fafb}
+    .card h4{margin:0 0 8px 0;font-size:14px;color:#374151}
+    .card .v{font-size:22px;font-weight:700;color:#111827}
+    table{border-collapse:collapse;width:100%;max-width:960px}
+    th,td{border:1px solid #e5e7eb;padding:8px 10px}
+    th{background:#f3f4f6;text-align:left}
+    .ok{color:#056e05;font-weight:600}
+    .btn{padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer}
+    .btn:hover{background:#f3f4f6}
+    form input{margin-right:8px;padding:6px 8px}
+  </style>
+</head>
+<body>
+  <h1>Noa Cobros</h1>
+  <p><strong>Status API:</strong> <span id="status">…</span></p>
+
+  <h2>Resumen</h2>
+  <div class="grid">
+    <div class="card"><h4>Monto total</h4><div id="r-total" class="v">₡0</div></div>
+    <div class="card"><h4>Pendientes</h4><div id="r-pendientes" class="v">0</div></div>
+    <div class="card"><h4>Vencidas</h4><div id="r-vencidas" class="v">0</div></div>
+    <div class="card"><h4>Por vencer</h4><div id="r-porvencer" class="v">0</div></div>
+  </div>
+
+  <h2>Nueva factura</h2>
+  <form id="form-factura">
+    <input name="cliente" placeholder="Cliente" required>
+    <input name="monto" type="number" step="0.01" placeholder="Monto" required>
+    <input name="vence" type="date" required>
+    <button class="btn" type="submit">Agregar</button>
+  </form>
+
+  <h2>Facturas</h2>
+  <div id="totales" style="margin:8px 0; font-weight:bold"></div>
+  <table id="tbl">
+    <thead>
+      <tr><th>ID</th><th>Cliente</th><th>Monto</th><th>Vence</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
