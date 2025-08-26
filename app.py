@@ -96,7 +96,7 @@ def upload_file():
                     estado=estado
                 ))
 
-            result = conn.execute(sa.select(facturas).order_by(facturas.c.vence.asc(), facturas.c.id.asc()))
+          result = conn.execute(sa.select(facturas).order_by(facturas.c.vence.asc(), facturas.c.id.asc()))
             data = [dict(row._mapping) for row in result]
             for r in data:
                 if isinstance(r["vence"], (datetime, date)):
