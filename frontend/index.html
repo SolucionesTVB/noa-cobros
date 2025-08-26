@@ -1,39 +1,162 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>Noa Cobros</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <h1>Noa Cobros</h1>
+  <h1>Noa Cobros – Facturas</h1>
 
-  <label>Texto del cobro</label>
-  <textarea id="inputTexto" placeholder="Ej: Cliente A, factura 123, vence 30/08"></textarea>
-
-  <div class="acciones">
-    <button id="btnCobrar">Cobrar</button>
-    <button id="btnReporte">Generar reporte mensual</button>
+  <!-- Subir archivo -->
+  <div class="card">
+    <h3>Subir Excel/CSV</h3>
+    <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+    <button id="btnUpload">Subir</button>
+    <small>Encabezados requeridos: cliente, monto, vence</small>
+    <div id="uploadMsg"></div>
   </div>
 
-  <hr>
+  <!-- Totales -->
+  <div id="totales" style="margin:10px 0; font-weight:bold;"></div>
 
-  <h3>Enviar WhatsApp (simulado)</h3>
-  <input id="tel" placeholder="+50670000000" />
-  <input id="msg" placeholder="Mensaje de cobro" />
-  <button id="btnWhatsapp">Enviar WhatsApp</button>
+  <!-- Filtros -->
+  <div style="margin:10px 0;">
+    <button onclick="aplicarFiltro('todas')">Todas</button>
+    <button onclick="aplicarFiltro('vencidas')">Vencidas</button>
+    <button onclick="aplicarFiltro('proximas')">Próximas 7 días</button>
+    <select id="filtroCliente" onchange="aplicarFiltro('cliente')">
+      <option value="">-- Filtrar por cliente --</option>
+    </select>
+  </div>
 
-  <hr>
+  <!-- Tabla -->
+  <table id="tablaFacturas" border="1" cellspacing="0" cellpadding="5">
+    <thead>
+      <tr>
+        <th>Cliente</th><th>Monto</th><th>Vence</th><th>Estado</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-  <h3>Cargar CSV</h3>
-  <input id="csv" type="file" accept=".csv" />
-  <button id="btnSubirCsv">Subir CSV</button>
-  <small>Columnas: cliente, monto, vence (dd/mm o dd/mm/aaaa)</small>
+  <!-- Configuración del backend -->
+  <script>
+    window.NETLIFY_ENV_BACKEND_URL = "https://noa-cobros-backend.onrender.com";
+  </script>
 
-  <pre id="salida"></pre>
+  <!-- Código principal -->
+  <script>
+  const BACKEND_URL = (window.NETLIFY_ENV_BACKEND_URL || "https://noa-cobros-backend.onrender.com");
+  let facturas = [];
+  let filtro = "todas";
+  let clienteSeleccionado = "";
 
-  <script src="./config.js"></script>
-  <script src="./app.js" defer></script>
+  function calcularTotales(lista) {
+    let pendientes = lista.filter(f => f.estado === "pendiente");
+    let vencidas = lista.filter(f => f.estado === "vencida");
+    let totalPend = pendientes.reduce((s, f) => s + f.monto, 0);
+    let totalVenc = vencidas.reduce((s, f) => s + f.monto, 0);
+
+    document.getElementById("totales").innerHTML = `
+      Pendientes: ${pendientes.length} (₡${totalPend.toLocaleString("es-CR")}) | 
+      Vencidas: ${vencidas.length} (₡${totalVenc.toLocaleString("es-CR")})
+    `;
+  }
+
+  function renderTabla(lista) {
+    const tbody = document.querySelector("#tablaFacturas tbody");
+    tbody.innerHTML = "";
+    lista.forEach(f => {
+      const vence = new Date(f.vence);
+      const hoy = new Date();
+      const diff = (vence - hoy)/(1000*60*60*24);
+
+      let color = "";
+      if (f.estado === "vencida") color = "style='color:red;'";
+      else if (diff <= 7) color = "style='color:orange;'";
+      else color = "style='color:green;'";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${f.cliente}</td>
+        <td>₡${Number(f.monto).toLocaleString("es-CR")}</td>
+        <td ${color}>${vence.toLocaleDateString("es-CR")}</td>
+        <td>${f.estado}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    calcularTotales(lista);
+  }
+
+  function aplicarFiltro(tipo) {
+    filtro = tipo;
+    let lista = [...facturas];
+    const hoy = new Date();
+
+    if (tipo === "vencidas") {
+      lista = lista.filter(f => f.estado === "vencida");
+    } else if (tipo === "proximas") {
+      lista = lista.filter(f => {
+        const vence = new Date(f.vence);
+        const diff = (vence - hoy)/(1000*60*60*24);
+        return diff >= 0 && diff <= 7;
+      });
+    } else if (tipo === "cliente" && clienteSeleccionado) {
+      lista = lista.filter(f => f.cliente === clienteSeleccionado);
+    }
+
+    renderTabla(lista);
+  }
+
+  async function cargarFacturas() {
+    const res = await fetch(`${BACKEND_URL}/facturas`);
+    const json = await res.json();
+    if (!json.ok) return;
+    facturas = json.data;
+
+    // Dropdown clientes
+    const clientesUnicos = [...new Set(facturas.map(f => f.cliente))];
+    const sel = document.getElementById("filtroCliente");
+    sel.innerHTML = '<option value="">-- Filtrar por cliente --</option>';
+    clientesUnicos.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => {
+      clienteSeleccionado = sel.value;
+      aplicarFiltro("cliente");
+    };
+
+    aplicarFiltro(filtro);
+  }
+
+  document.getElementById("btnUpload").addEventListener("click", async () => {
+    const fi = document.getElementById("fileInput");
+    const msg = document.getElementById("uploadMsg");
+    msg.textContent = "";
+    if (!fi.files.length) {
+      msg.textContent = "Seleccioná un archivo .csv/.xlsx/.xls";
+      return;
+    }
+    const form = new FormData();
+    form.append("file", fi.files[0]);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/upload-file`, { method: "POST", body: form });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Error desconocido");
+      msg.textContent = `Cargadas ${json.insertados}. Total en base: ${json.total}.`;
+      await cargarFacturas();
+      fi.value = "";
+    } catch (err) {
+      msg.textContent = "Error: " + err.message;
+    }
+  });
+
+  // Carga inicial
+  cargarFacturas();
+  </script>
 </body>
 </html>

@@ -1,1 +1,2 @@
-window.API_BASE = "http://127.0.0.1:5056";
+export const API_BASE =
+  localStorage.getItem('API_BASE') || "https://noa-cobros-backend.onrender.com";

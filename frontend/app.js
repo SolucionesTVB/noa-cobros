@@ -1,57 +1,84 @@
-#!/bin/bash
-set -euo pipefail
+import { API_BASE } from "./config.js";
 
-echo "🚀 Preparando deploy de Noa Cobros..."
+const $ = (s)=>document.querySelector(s);
+const tbody = $("#tbl tbody");
 
-# .gitignore básico
-if [ ! -f .gitignore ]; then
-  cat > .gitignore <<'GIT'
-backend/.venv/
-__pycache__/
-*.pyc
-noa_cobros.db
-GIT
-fi
+function crc(n){ return Number(n||0).toLocaleString("es-CR",{style:"currency",currency:"CRC"}); }
 
-# 1. Inicia repo si no existe
-if [ ! -d ".git" ]; then
-  git init
-  echo "✔ Repo inicializado"
-fi
+async function ping(){
+  try{
+    const r = await fetch(`${API_BASE}/status`);
+    const j = await r.json();
+    $("#status").textContent = j.ok ? `OK (${j.port})` : "Error";
+  }catch{ $("#status").textContent = "Sin conexión"; }
+}
 
-# 2. Agrega y commitea
-git add .
-git commit -m "Deploy automático Noa Cobros" || echo "ℹ️ Nada nuevo para commitear"
+async function cargar(){
+  const r = await fetch(`${API_BASE}/facturas`);
+  const data = await r.json();
 
-# 3. Remote origin: usa GitHub CLI si está disponible; si no, pide URL
-if ! git remote | grep -q origin; then
-  if command -v gh >/dev/null 2>&1; then
-    gh repo create noa-cobros --public --source . --remote origin --push
-    echo "✔ Repo creado y subido con gh"
-  else
-    echo "👉 Pegá la URL de tu repo en GitHub (ej: https://github.com/TuUsuario/noa-cobros.git):"
-    read REPO
-    git remote add origin "$REPO"
-    git branch -M main
-    git push -u origin main
-    echo "✔ Código empujado a $REPO"
-  fi
-else
-  git branch -M main
-  git push -u origin main
-fi
+  tbody.innerHTML = "";
+  let total=0, pend=0, venc=0, porv=0;
+  const hoy = new Date().toISOString().slice(0,10);
 
-echo
-echo "✅ Código en GitHub."
-echo
-echo "👉 Render:"
-echo "   - Entra a https://render.com > New > Blueprint"
-echo "   - Seleccioná este repo. Usará render.yaml y levantará el backend con gunicorn."
-echo
-echo "👉 Netlify:"
-echo "   - Entra a https://app.netlify.com > Add new site > Deploy manually"
-echo "   - Arrastrá la carpeta /frontend. Te dará un link público (guárdalo en favoritos)."
-echo
-echo "📌 Si el frontend necesita apuntar a otra URL de backend en Render:"
-echo "    En el navegador, ejecutá una vez en consola:"
-echo "    localStorage.setItem('API_BASE','https://TU-BACKEND.onrender.com')"
+  data.forEach(f=>{
+    total += Number(f.monto||0);
+    if((f.estado||"pendiente")==="pendiente"){
+      pend++;
+      if(f.vence<hoy) venc++; else porv++;
+    }
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${f.id}</td>
+      <td>${f.cliente}</td>
+      <td>${crc(f.monto)}</td>
+      <td>${f.vence}</td>
+      <td>${f.estado}</td>
+      <td>
+        ${f.estado!=="pagada"
+          ? `<button class="btn" data-pagar="${f.id}">Marcar pagada</button>`
+          : `<span class="ok">Pagada</span>`}
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  $("#r-total").textContent = crc(total);
+  $("#r-pend").textContent = pend;
+  $("#r-venc").textContent = venc;
+  $("#r-porv").textContent = porv;
+
+  tbody.querySelectorAll("[data-pagar]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.getAttribute("data-pagar");
+      await fetch(`${API_BASE}/facturas/${id}`, {
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({estado:"pagada"})
+      });
+      await cargar();
+    });
+  });
+}
+
+async function crear(e){
+  e.preventDefault();
+  const f = e.target;
+  const payload = {
+    cliente: f.cliente.value,
+    monto: f.monto.value,
+    vence: f.vence.value
+  };
+  await fetch(`${API_BASE}/facturas`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+  f.reset();
+  await cargar();
+}
+
+window.addEventListener("DOMContentLoaded", async ()=>{
+  await ping();
+  await cargar();
+  $("#form-factura").addEventListener("submit", crear);
+});
