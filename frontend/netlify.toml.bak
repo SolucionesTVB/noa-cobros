@@ -1,0 +1,24 @@
+# Redirige rutas del sitio a tu backend en Render
+[[redirects]]
+  from = "/upload_file"
+  to   = "https://noa-cobros-backend.onrender.com/upload_file"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from = "/upload-file"
+  to   = "https://noa-cobros-backend.onrender.com/upload_file"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from = "/facturas"
+  to   = "https://noa-cobros-backend.onrender.com/facturas"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from = "/notificar"
+  to   = "https://noa-cobros-backend.onrender.com/notificar"
+  status = 200
+  force  = true
