@@ -237,3 +237,33 @@ def notificar_test():
         return jsonify({"ok": r.ok, "status": r.status_code, "resp": _safe_json_response(r)}), r.status_code
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+# ---------- Wasender helpers y endpoint de prueba ----------
+import os, requests
+from flask import request, jsonify
+
+def _safe_json_response(resp):
+    try:
+        return resp.json()
+    except Exception:
+        return {"text": resp.text[:400]}
+
+def _send_whatsapp_text(to: str, text: str):
+    api_key  = os.getenv("WASENDER_API_KEY", "")
+    api_url  = os.getenv("WASENDER_API_URL", "https://api.wasenderapi.com").rstrip("/")
+    session  = os.getenv("WASENDER_SESSION", "Noa asistencia")
+    headers  = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload  = {"session": session, "to": to, "text": text}
+    r = requests.post(f"{api_url}/api/v1/messages/send-text", json=payload, headers=headers, timeout=20)
+    return r
+
+@app.route("/notificar-test", methods=["POST"])
+def notificar_test():
+    """
+    Envía un mensaje de prueba a Tony vía WasenderAPI.
+    """
+    try:
+        r = _send_whatsapp_text("+50660457989", "✅ Hola Tony 👋, prueba de Noa Cobros.")
+        return jsonify({"ok": r.ok, "status": r.status_code, "resp": _safe_json_response(r)}), r.status_code
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
