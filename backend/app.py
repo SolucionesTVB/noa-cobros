@@ -86,3 +86,22 @@ def notificar(dry_run: int = 1, limit: int = 10):
         "to_send": min(len(rows), max(1, limit)),
         "ejemplos": preview
     })
+# --- Wasender test endpoint (nombre único) ---
+import os, requests
+
+WASENDER_API_KEY = os.getenv("WASENDER_API_KEY")
+WASENDER_URL = "https://api.wasenderapi.com/sendMessage"
+
+@app.post("/notificar-test")   # ruta distinta de /notificar
+def notificar_test():          # nombre de función distinto
+    payload = {
+        "apiKey": WASENDER_API_KEY,
+        "session": "Noa asistencia",      # nombre exacto de tu sesión en Wasender
+        "phone": "+50660457989",          # tu número de prueba
+        "message": "✅ Prueba Noa Cobros vía WasenderAPI (FastAPI)."
+    }
+    r = requests.post(WASENDER_URL, json=payload)
+    try:
+        return {"ok": r.ok, "status": r.status_code, "resp": r.json()}
+    except Exception:
+        return {"ok": r.ok, "status": r.status_code, "resp": r.text}
