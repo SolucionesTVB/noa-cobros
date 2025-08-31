@@ -38,3 +38,51 @@ def notificar():
         return jsonify({"ok": True, "dry_run": True, "to_send": len(sample), "ejemplos": sample[:2]})
     # Aquí iría el envío real (WhatsApp)
     return jsonify({"ok": True, "sent": len(sample)})
+
+# ========= Notificaciones =========
+from typing import List, Dict
+
+def _load_rows_for_notify() -> List[Dict]:
+    """
+    Fuente de datos para notificar.
+    - Si ya tienes filas en memoria tras /upload-file, úsalas.
+    - Si guardas en archivo/DB, cámbialo aquí.
+    """
+    try:
+        # Si tu código guarda en una variable global FACTURAS (común en nuestro boceto):
+        return FACTURAS  # type: ignore # noqa
+    except Exception:
+        return []
+
+def _build_message(row: Dict) -> str:
+    cliente = str(row.get("Cliente", "")).strip()
+    monto   = row.get("Monto", 0)
+    vence   = str(row.get("Vence", "")).strip()
+    return f"Estimado {cliente}, le recordamos que su factura por ₡{monto:,.0f} vence el {vence}. Gracias."
+
+@app.get("/notificar")
+def notificar(dry_run: int = 1, limit: int = 10):
+    rows = _load_rows_for_notify()
+    if not rows:
+        return jsonify({"ok": False, "error": "No hay facturas cargadas."})
+
+    # Prepara mensajes
+    preview = []
+    for r in rows[:max(1, limit)]:
+        msg = _build_message(r)
+        # En esta fase no enviamos nada (solo dry run)
+        preview.append({
+            "Cliente": r.get("Cliente"),
+            "Vence":   r.get("Vence"),
+            "Monto":   r.get("Monto"),
+            "Estado":  r.get("Estado", "Pendiente"),
+            "mensaje": msg
+        })
+
+    return jsonify({
+        "ok": True,
+        "dry_run": bool(dry_run),
+        "total": len(rows),
+        "to_send": min(len(rows), max(1, limit)),
+        "ejemplos": preview
+    })
