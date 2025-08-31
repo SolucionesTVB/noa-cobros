@@ -5,7 +5,7 @@
 <table id="t" border="1" cellpadding="6" cellspacing="0" style="margin-top:10px"><thead>
 <tr><th>Cliente</th><th>Monto</th><th>Vence</th><th>Estado</th></tr></thead><tbody></tbody></table>
 <script>
-const API="https://noa-cobros-backend.onrender.com";
+const API="https://EL-QUE-DIO-200.onrender.com";
 const CANDIDATOS=["/upload_file","/upload_file","/upload","/uploadcsv","/upload-csv","/api/upload_file","/api/upload"];
 let UP=null;
 
