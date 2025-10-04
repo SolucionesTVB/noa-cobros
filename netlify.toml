@@ -1,5 +1,5 @@
 [build]
-  publish = "frontend" # ← Netlify publicará esa carpeta tal cual
+  publish = "frontend"   # Netlify publica la carpeta frontend/ tal cual
 
 [[redirects]]
   from = "/api/*"
