@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Noa Cobros — Operación mínima</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Carga el JS cuando el DOM ya está parseado -->
+  <script src="app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -62,7 +64,7 @@
   <!-- 3) Operación: subir CSV -->
   <section class="card">
     <h2>3) Operación (Importar CSV)</h2>
-    <p class="muted">Columnas requeridas: <code>cliente,monto,vence</code>. Opcionales: <code>estado,referencia,descripcion</code>. Formatos de fecha aceptados: <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, etc.</p>
+    <p class="muted">Columnas requeridas: <code>cliente,monto,vence</code>. Opcionales: <code>estado,referencia,descripcion</code>.</p>
     <div class="row">
       <input id="fileCSV" type="file" accept=".csv" />
       <button id="btnImportar">Subir e importar</button>
@@ -73,7 +75,5 @@
   <footer class="foot">
     <small>NOA Cobros · mínimo viable en producción.</small>
   </footer>
-
-  <script src="app.js"></script>
 </body>
 </html>
