@@ -1,3 +1,9 @@
 [build]
-  publish = "."
+  publish = "frontend"
+
+[[redirects]]
+  from = "/api/*"
+  to   = "https://noa-cobros-backend-clean.onrender.com/:splat"
+  status = 200
+
 
