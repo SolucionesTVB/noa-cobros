@@ -1,70 +1,79 @@
-<!doctype html><meta charset="utf-8"><title>Noa Cobros – Autodetect</title>
-<h1>Noa Cobros – Subir CSV (auto-detect endpoint)</h1>
-<input type="file" id="f" accept=".csv"><button onclick="subir()">Subir</button>
-<pre id="log" style="white-space:pre-wrap;background:#f7f7f7;padding:10px;border:1px solid #ddd"></pre>
-<table id="t" border="1" cellpadding="6" cellspacing="0" style="margin-top:10px"><thead>
-<tr><th>Cliente</th><th>Monto</th><th>Vence</th><th>Estado</th></tr></thead><tbody></tbody></table>
-<script>
-const API="https://noa-cobros-backend-clean.onrender.com";
-const CANDIDATOS=["/upload_file","/upload_file","/upload","/uploadcsv","/upload-csv","/api/upload_file","/api/upload"];
-let UP=null;
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Noa Cobros — Operación mínima</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Noa Cobros · Prod</h1>
+    <span class="tag">cargar · listar · exportar · cobrar</span>
+  </header>
 
-async function autodetect(fd,log){
-  for (const p of CANDIDATOS){
-    try{
-      log(`▶ Probando ${API+p}`);
-      const r=await fetch(API+p,{method:"POST",body:fd});
-      const ct=r.headers.get("content-type")||"";
-      log(`   HTTP ${r.status} · CT: ${ct}`);
-      if(r.ok && ct.includes("application/json")){
-        const j=await r.clone().json().catch(()=>null);
-        if(j && (Array.isArray(j.rows)||Array.isArray(j))){
-          log(`✅ Éxito con ${API+p}`);
-          return {url:API+p, data:j};
-        }
-      }
-      const txt=await r.text();
-      if (txt.startsWith("<!doctype")) log("   (Devolvió HTML, no JSON)");
-    }catch(e){ log("   Error: "+e.message); }
-  }
-  return {url:null, data:null};
-}
+  <!-- 1) Acceso (adorno: guarda token) -->
+  <section class="card">
+    <h2>1) Acceso (guardar token)</h2>
+    <div class="grid">
+      <label>Email
+        <input id="email" type="email" placeholder="usuario@empresa.com" />
+      </label>
+      <label>Clave
+        <input id="pass" type="password" placeholder="••••••••" />
+      </label>
+    </div>
+    <div class="row">
+      <button id="btnLogin">Entrar y guardar token</button>
+      <button id="btnProbarToken" class="ghost">Probar token</button>
+      <button id="btnBorrarToken" class="danger ghost">Borrar token</button>
+      <small id="tokenState" class="muted"></small>
+    </div>
+  </section>
 
-function logline(s){ document.getElementById("log").textContent += s+"\n"; }
+  <!-- 2) Listado -->
+  <section class="card">
+    <h2>2) Listado</h2>
+    <div class="grid">
+      <label>Desde
+        <input id="desde" type="date" />
+      </label>
+      <label>Hasta
+        <input id="hasta" type="date" />
+      </label>
+    </div>
+    <div class="row">
+      <button id="btnListar">Buscar / Listar</button>
+      <button id="btnExportar" class="ghost">Exportar CSV</button>
+      <small id="listInfo" class="muted"></small>
+    </div>
+    <div class="tableWrap">
+      <table id="tbl" class="table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Cliente</th><th>Monto</th><th>Vence</th><th>Estado</th><th>Referencia</th><th>Acción</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
-async function subir(){
-  const out=document.getElementById("log"); out.textContent="";
-  const f=document.getElementById("f").files[0];
-  if(!f){ out.textContent="Seleccioná un CSV"; return; }
-  const fd=new FormData(); fd.append("file",f);
+  <!-- 3) Operación: subir CSV -->
+  <section class="card">
+    <h2>3) Operación (Importar CSV)</h2>
+    <p class="muted">Columnas requeridas: <code>cliente,monto,vence</code>. Opcionales: <code>estado,referencia,descripcion</code>. Formatos de fecha aceptados: <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, etc.</p>
+    <div class="row">
+      <input id="fileCSV" type="file" accept=".csv" />
+      <button id="btnImportar">Subir e importar</button>
+      <small id="importInfo" class="muted"></small>
+    </div>
+  </section>
 
-  if(!UP){
-    const res=await autodetect(fd,logline);
-    if(!res.url){ out.textContent+="\n❌ No encontré endpoint válido.\n"; return; }
-    UP=res.url;
-    if(res.data){ renderRows(res.data.rows||res.data); return; } // ya subió con éxito
-  }else{
-    logline(`Usando ${UP}`);
-    const r=await fetch(UP,{method:"POST",body:fd});
-    const j=await r.json();
-    renderRows(j.rows||j);
-  }
-}
+  <footer class="foot">
+    <small>NOA Cobros · mínimo viable en producción.</small>
+  </footer>
 
-function renderRows(rows){
-  const tb=document.querySelector("#t tbody");
-  const norm=(rows||[]).map(r=>({
-    Cliente:r.Cliente||r.cliente||"",
-    Monto: +((r.Monto??r.monto) || 0),
-    Vence: (r.Vence||r.vence||"").slice(0,10),
-    Estado: r.Estado||r.estado||"Pendiente"
-  }));
-  tb.innerHTML = norm.map(r=>`<tr><td>${esc(r.Cliente)}</td><td>${fmt(r.Monto)}</td><td>${esc(r.Vence)}</td><td>${esc(r.Estado)}</td></tr>`).join("");
-  logline(`\n✅ Filas: ${norm.length}`);
-}
-function fmt(n){ return Number(n||0).toLocaleString('es-CR',{style:'currency',currency:'CRC',maximumFractionDigits:0}); }
-function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-</script>
-<!-- redeploy @  -->
-<!-- redeploy @  -->
-
+  <script src="app.js"></script>
+</body>
+</html>
