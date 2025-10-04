@@ -1,84 +1,163 @@
-import { API_BASE } from "./config.js";
+// Config
+const API_BASE = "/api";
 
-const $ = (s)=>document.querySelector(s);
-const tbody = $("#tbl tbody");
+// Util
+const $ = s => document.querySelector(s);
+const fmt = n => new Intl.NumberFormat('es-CR', {maximumFractionDigits:0}).format(Number(n||0));
 
-function crc(n){ return Number(n||0).toLocaleString("es-CR",{style:"currency",currency:"CRC"}); }
+function getToken(){ return localStorage.getItem('token') || ''; }
+function setToken(t){ localStorage.setItem('token', t||''); renderTokenState(); }
+function clearToken(){ localStorage.removeItem('token'); renderTokenState(); }
 
-async function ping(){
+function headersJSON(){
+  const h = { 'Content-Type': 'application/json' };
+  const t = getToken(); if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
+}
+function headersAuth(){
+  const h = {};
+  const t = getToken(); if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
+}
+
+function renderTokenState(){
+  $('#tokenState').textContent = getToken() ? 'Token cargado' : 'Sin token';
+}
+
+// 1) Login (adorno: crea usuario si no existe y guarda token)
+async function doLogin(){
+  const email = $('#email').value.trim();
+  const pass  = $('#pass').value;
+  if(!email || !pass){ alert('Complete email y clave'); return; }
   try{
-    const r = await fetch(`${API_BASE}/status`);
-    const j = await r.json();
-    $("#status").textContent = j.ok ? `OK (${j.port})` : "Error";
-  }catch{ $("#status").textContent = "Sin conexión"; }
-}
-
-async function cargar(){
-  const r = await fetch(`${API_BASE}/facturas`);
-  const data = await r.json();
-
-  tbody.innerHTML = "";
-  let total=0, pend=0, venc=0, porv=0;
-  const hoy = new Date().toISOString().slice(0,10);
-
-  data.forEach(f=>{
-    total += Number(f.monto||0);
-    if((f.estado||"pendiente")==="pendiente"){
-      pend++;
-      if(f.vence<hoy) venc++; else porv++;
-    }
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${f.id}</td>
-      <td>${f.cliente}</td>
-      <td>${crc(f.monto)}</td>
-      <td>${f.vence}</td>
-      <td>${f.estado}</td>
-      <td>
-        ${f.estado!=="pagada"
-          ? `<button class="btn" data-pagar="${f.id}">Marcar pagada</button>`
-          : `<span class="ok">Pagada</span>`}
-      </td>`;
-    tbody.appendChild(tr);
-  });
-
-  $("#r-total").textContent = crc(total);
-  $("#r-pend").textContent = pend;
-  $("#r-venc").textContent = venc;
-  $("#r-porv").textContent = porv;
-
-  tbody.querySelectorAll("[data-pagar]").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const id = btn.getAttribute("data-pagar");
-      await fetch(`${API_BASE}/facturas/${id}`, {
-        method:"PUT",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({estado:"pagada"})
-      });
-      await cargar();
+    // register (idempotente)
+    await fetch(`${API_BASE}/auth/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
     });
-  });
+
+    // login
+    const r = await fetch(`${API_BASE}/auth/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const j = await r.json();
+    if(!r.ok){ throw new Error(j.error || 'login_fail'); }
+    setToken(j.access_token);
+    alert('Token guardado.');
+  }catch(e){
+    console.error(e);
+    alert('Error de acceso');
+  }
 }
 
-async function crear(e){
-  e.preventDefault();
-  const f = e.target;
-  const payload = {
-    cliente: f.cliente.value,
-    monto: f.monto.value,
-    vence: f.vence.value
-  };
-  await fetch(`${API_BASE}/facturas`, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify(payload)
-  });
-  f.reset();
-  await cargar();
+async function probarToken(){
+  try{
+    const r = await fetch(`${API_BASE}/users`, { headers: headersAuth() });
+    if(!r.ok){ throw new Error('token inválido'); }
+    const j = await r.json();
+    alert(`OK. Usuarios sample: ${j.length}`);
+  }catch(e){
+    alert('Token inválido o vencido');
+  }
 }
 
-window.addEventListener("DOMContentLoaded", async ()=>{
-  await ping();
-  await cargar();
-  $("#form-factura").addEventListener("submit", crear);
+// 2) Listado
+async function listar(){
+  const qs = [];
+  const d = $('#desde').value; if(d) qs.push(`desde=${encodeURIComponent(d)}`);
+  const h = $('#hasta').value; if(h) qs.push(`hasta=${encodeURIComponent(h)}`);
+  const url = `${API_BASE}/cobros${qs.length?`?${qs.join('&')}`:''}`;
+  $('#listInfo').textContent = 'Cargando...';
+  try{
+    const r = await fetch(url, { headers: headersAuth() });
+    const j = await r.json();
+    if(!r.ok){ throw new Error(j.error||'list_fail'); }
+    const tb = $('#tbl tbody'); tb.innerHTML = '';
+    j.forEach(row=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.id}</td>
+        <td>${row.cliente||row.descripcion||''}</td>
+        <td>₡${fmt(row.monto)}</td>
+        <td>${row.vence||''}</td>
+        <td>${row.estado}</td>
+        <td>${row.referencia||''}</td>
+        <td>
+          ${row.estado==='pendiente' ? `<button data-id="${row.id}" class="mini cobrar">Cobrar</button>` : '<span class="ok">Pagado</span>'}
+        </td>
+      `;
+      tb.appendChild(tr);
+    });
+    $('#listInfo').textContent = `${j.length} registros`;
+  }catch(e){
+    console.error(e);
+    $('#listInfo').textContent = 'Error';
+    alert('Error al listar.');
+  }
+}
+
+// 3) Cobrar
+async function cobrar(id){
+  if(!confirm(`Marcar como pagado el ID ${id}?`)) return;
+  try{
+    const r = await fetch(`${API_BASE}/cobros/${id}/cobrar`, { method:'POST', headers: headersAuth() });
+    const j = await r.json();
+    if(!r.ok){ throw new Error(j.error||'cobrar_fail'); }
+    await listar();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo cobrar.');
+  }
+}
+
+// 4) Exportar CSV (descarga directa)
+function exportar(){
+  const t = getToken();
+  if(!t){ alert('Primero acceda y guarde token.'); return; }
+  const url = `${API_BASE}/cobros/export`;
+  // truco: crear link con header Auth vía Netlify: no se puede. Alternativa: fetch y blob.
+  fetch(url, { headers: headersAuth() })
+  .then(r => { if(!r.ok) throw new Error('export_fail'); return r.blob(); })
+  .then(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'cobros_export.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(a.href);
+  })
+  .catch(()=> alert('No se pudo exportar.'));
+}
+
+// 5) Importar CSV
+async function importarCSV(){
+  const f = $('#fileCSV').files[0];
+  if(!f){ alert('Seleccione un CSV'); return; }
+  const fd = new FormData(); fd.append('file', f);
+  $('#importInfo').textContent = 'Subiendo...';
+  try{
+    const r = await fetch(`${API_BASE}/cobros/import_csv`, { method:'POST', headers: headersAuth(), body: fd });
+    const j = await r.json();
+    if(!r.ok){ throw new Error(j.error||'import_fail'); }
+    $('#importInfo').textContent = `Importados: ${j.creados}`;
+    await listar();
+  }catch(e){
+    console.error(e);
+    $('#importInfo').textContent = 'Error';
+    alert('Error al importar CSV.');
+  }
+}
+
+// Eventos
+document.addEventListener('click', (ev)=>{
+  const t = ev.target;
+  if(t.id==='btnLogin') doLogin();
+  if(t.id==='btnProbarToken') probarToken();
+  if(t.id==='btnBorrarToken'){ clearToken(); alert('Token eliminado.'); }
+  if(t.id==='btnListar') listar();
+  if(t.id==='btnExportar') exportar();
+  if(t.id==='btnImportar') importarCSV();
+  if(t.classList.contains('cobrar')) cobrar(t.dataset.id);
 });
+
+renderTokenState();
