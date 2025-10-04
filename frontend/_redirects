@@ -1,2 +1,4 @@
 /api/*  https://noa-cobros-backend-clean.onrender.com/:splat  200
+/*      /index.html  200
+
 
