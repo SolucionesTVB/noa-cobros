@@ -1,4 +1,4 @@
-// frontend/app.js — NOA Cobros (modo abierto sin token)
+// frontend/app.js — NOA Cobros (modo abierto)
 (function () {
   const d = document;
   const API = '/api';
@@ -22,7 +22,6 @@
     return res;
   }
 
-  // LISTAR
   $btnListar?.addEventListener('click', async ()=>{
     try {
       const q = new URLSearchParams();
@@ -35,7 +34,6 @@
     } catch(e){ alertx('Error al listar'); }
   });
 
-  // EXPORT
   $btnExport?.addEventListener('click', async ()=>{
     try {
       const r = await req('/cobros/export', { method:'GET' });
@@ -49,7 +47,6 @@
     } catch { alertx('No se pudo exportar.'); }
   });
 
-  // IMPORT
   $btnImport?.addEventListener('click', async ()=>{
     try {
       const f = $file.files?.[0];
@@ -64,19 +61,20 @@
     } catch { alertx('Error al importar CSV.'); }
   });
 
-  // COBRAR (botón por fila)
   $tbody?.addEventListener('click', async (ev)=>{
     const id = ev.target?.getAttribute?.('data-cobrar');
     if (!id) return;
     if (!confirm(`¿Cobrar ${id}?`)) return;
     const r = await req(`/cobros/${id}/cobrar`, { method:'POST' });
     const j = await r.json().catch(()=> ({}));
-    if (!r.ok || j.ok === false) return alertx('No se pudo cobrar.');
+    if (!r.ok || j.ok === False) return alertx('No se pudo cobrar.');
     alertx('Cobrado.');
     $btnListar.click();
   });
 
   function renderRows(items){
+    const fmtMon = n => '₡' + Number(n||0).toLocaleString('es-CR',{maximumFractionDigits:0});
+    const esc = s => String(s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     $tbody.innerHTML = (items||[]).map(x => `
       <tr>
         <td>${x.id}</td>
@@ -94,8 +92,6 @@
     `).join('');
   }
 
-  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
-  function fmtMon(n){ n = Number(n||0); return '₡' + n.toLocaleString('es-CR',{maximumFractionDigits:0}); }
   function toISO(dmy){
     if (!dmy) return '';
     const [dd,mm,aa] = String(dmy).split(/[\/\-]/);
