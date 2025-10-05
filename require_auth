@@ -1,0 +1,17 @@
+def require_auth():
+    # Modo abierto: sin token, entra con usuario demo.
+    if OPEN_MODE:
+        u = User.query.filter_by(email="demo@noa.com").first()
+        if not u:
+            u = User(email="demo@noa.com")
+            db.session.add(u); db.session.commit()
+        return u, None
+
+    # Modo normal (con token), se usa cuando OPEN_MODE=0
+    email = read_token(request.headers.get("Authorization", ""))
+    if not email: 
+        return None, (jsonify({"error": "no_autorizado"}), 401)
+    u = User.query.filter_by(email=email).first()
+    if not u: 
+        return None, (jsonify({"error": "no_autorizado"}), 401)
+    return u, None
